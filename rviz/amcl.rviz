@@ -8,6 +8,7 @@ Panels:
         - /Status1
         - /LaserScan1
         - /Map1
+        - /Map1/Status1
         - /Map1/Topic1
         - /RobotModel1
         - /RobotModel1/Description Topic1

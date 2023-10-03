@@ -25,6 +25,7 @@ setup(
             'helper_functions = robot_localization.helper_functions:main',
             'occupancy_field = robot_localization.occupancy_field:main',
             'pf = robot_localization.pf:main',
+            'robotControl = robot_localization.robotControl:main',
         ],
     },
 )

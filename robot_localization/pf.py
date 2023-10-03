@@ -42,11 +42,14 @@ class Particle(object):
 
     def as_pose(self):
         """ A helper function to convert a particle to a geometry_msgs/Pose message """
+        # Odometry gives us the robot's orientation as a quaternion - we want theta, which is the yaw component 
+        # Functions are provited for converting from quaternion to roll, pitch, yaw (we only care about yaw)
         q = quaternion_from_euler(0, 0, self.theta)
         return Pose(position=Point(x=self.x, y=self.y, z=0.0),
                     orientation=Quaternion(x=q[0], y=q[1], z=q[2], w=q[3]))
 
     # TODO: define additional helper functions if needed
+
 
 class ParticleFilter(Node):
     """ The class that represents a Particle Filter ROS Node
