@@ -20,6 +20,7 @@ from helper_functions import TFHelper
 from rclpy.qos import qos_profile_sensor_data
 from angle_helpers import quaternion_from_euler
 
+#Class for defining particles with attributes x, y, theta, and their weighting w
 class Particle(object):
     """ Represents a hypothesis (particle) of the robot's pose consisting of x,y and theta (yaw)
         Attributes:
@@ -40,6 +41,7 @@ class Particle(object):
         self.x = x
         self.y = y
 
+    #helper function that converts a particles location and angle to a Neato pose (I think)
     def as_pose(self):
         """ A helper function to convert a particle to a geometry_msgs/Pose message """
         # Odometry gives us the robot's orientation as a quaternion - we want theta, which is the yaw component 
@@ -49,6 +51,8 @@ class Particle(object):
                     orientation=Quaternion(x=q[0], y=q[1], z=q[2], w=q[3]))
 
     # TODO: define additional helper functions if needed
+    
+    # compute closest distance? using occupancy_field
 
 
 class ParticleFilter(Node):
@@ -86,12 +90,14 @@ class ParticleFilter(Node):
 
         # TODO: define additional constants if needed
 
+        #What are these two?
         # pose_listener responds to selection of a new approximate robot location (for instance using rviz)
         self.create_subscription(PoseWithCovarianceStamped, 'initialpose', self.update_initial_pose, 10)
 
         # publish the current particle cloud.  This enables viewing particles in rviz.
         self.particle_pub = self.create_publisher(ParticleCloud, "particle_cloud", qos_profile_sensor_data)
 
+        #subscription to laser scan on neato
         # laser_subscriber listens for data from the lidar
         self.create_subscription(LaserScan, self.scan_topic, self.scan_received, 10)
 
@@ -128,6 +134,7 @@ class ParticleFilter(Node):
             self.run_loop()
             time.sleep(0.1)
 
+
     def run_loop(self):
         """ This is the main run_loop of our particle filter.  It checks to see if
             any scans are ready and to be processed and will call several helper
@@ -135,25 +142,30 @@ class ParticleFilter(Node):
             
             You do not need to modify this function, but it is helpful to understand it.
         """
+        #check if theres a new scan
         if self.scan_to_process is None:
             return
         msg = self.scan_to_process
 
+        #translate from particle pose to neato pose? or something like that?: we may need to code
         (new_pose, delta_t) = self.transform_helper.get_matching_odom_pose(self.odom_frame,
                                                                            self.base_frame,
                                                                            msg.header.stamp)
+        #check if we got a new_pose
         if new_pose is None:
             # we were unable to get the pose of the robot corresponding to the scan timestamp
-            if delta_t is not None and delta_t < Duration(seconds=0.0):
+            if delta_t is not None and delta_t < Duration(seconds=0.0): #make sure 
                 # we will never get this transform, since it is before our oldest one
                 self.scan_to_process = None
             return
         
+        #take turtlebot formatted scan and convert to polar neato lidar scan format?
         (r, theta) = self.transform_helper.convert_scan_to_polar_in_robot_frame(msg, self.base_frame)
         print("r[0]={0}, theta[0]={1}".format(r[0], theta[0]))
         # clear the current scan so that we can process the next one
         self.scan_to_process = None
 
+        #update odom_pose - estimation of where the robot is compared to where it started
         self.odom_pose = new_pose
         new_odom_xy_theta = self.transform_helper.convert_pose_to_xy_and_theta(self.odom_pose)
         print("x: {0}, y: {1}, yaw: {2}".format(*new_odom_xy_theta))
@@ -172,12 +184,13 @@ class ParticleFilter(Node):
         # publish particles (so things like rviz can see them)
         self.publish_particles(msg.header.stamp)
 
+    #Function for checking if the robot has moved far enough to update the particle cloud, current pose, etc.
     def moved_far_enough_to_update(self, new_odom_xy_theta):
         return math.fabs(new_odom_xy_theta[0] - self.current_odom_xy_theta[0]) > self.d_thresh or \
                math.fabs(new_odom_xy_theta[1] - self.current_odom_xy_theta[1]) > self.d_thresh or \
                math.fabs(new_odom_xy_theta[2] - self.current_odom_xy_theta[2]) > self.a_thresh
 
-
+    #function for estimating robot's pose and updating it
     def update_robot_pose(self):
         """ Update the estimate of the robot's pose given the updated particles.
             There are two logical methods for this:
@@ -238,7 +251,7 @@ class ParticleFilter(Node):
     def update_initial_pose(self, msg):
         """ Callback function to handle re-initializing the particle filter based on a pose estimate.
             These pose estimates could be generated by another ROS Node or could come from the rviz GUI """
-        xy_theta = self.transform_helper.convert_pose_to_xy_and_theta(msg.pose.pose)
+        xy_theta = self.transform_helper.convert_pose_to_xy_and_theta(msg.pose.pose) #msg.pose.pose is a position and an orientation, xyzw location and quaternion orientation
         self.initialize_particle_cloud(msg.header.stamp, xy_theta)
 
     def initialize_particle_cloud(self, timestamp, xy_theta=None):
@@ -246,10 +259,21 @@ class ParticleFilter(Node):
             Arguments
             xy_theta: a triple consisting of the mean x, y, and theta (yaw) to initialize the
                       particle cloud around.  If this input is omitted, the odometry will be used """
-        if xy_theta is None:
+        if xy_theta is None:  
             xy_theta = self.transform_helper.convert_pose_to_xy_and_theta(self.odom_pose)
         self.particle_cloud = []
         # TODO create particles
+        #create 100 Particle instances with x, y, theta, w = 1.0
+
+        #use numpy to create normalized distributions for x, y, theta
+        #s = np.random.normal(mu, sigma, 1000)
+        theta = np.random.normal(0, 0.17,100)  #we think theta is in radians?
+        x = np.random.normal(0, 0.5,100) #change 0 to the current pose of the robot
+        y = np.random.normal(0, 0.5,100)   #here as well
+
+        #generate list of n_particles particles
+        for i in range (self.n_particles):
+            self.particle_cloud[i]= Particle(x[i],y[i], theta[i], 1.0)
 
         self.normalize_particles()
         self.update_robot_pose()
