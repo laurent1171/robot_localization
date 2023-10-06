@@ -19,6 +19,7 @@ from occupancy_field import OccupancyField
 from helper_functions import TFHelper
 from rclpy.qos import qos_profile_sensor_data
 from angle_helpers import quaternion_from_euler
+from angle_helpers import euler_from_quaternion
 
 #Class for defining particles with attributes x, y, theta, and their weighting w
 class Particle(object):
@@ -87,6 +88,8 @@ class ParticleFilter(Node):
 
         self.d_thresh = 0.2             # the amount of linear movement before performing an update
         self.a_thresh = math.pi/6       # the amount of angular movement before performing an update
+
+        self.robot_pose = Pose()   #make sure this works/is needed?
 
         # TODO: define additional constants if needed
 
@@ -261,15 +264,20 @@ class ParticleFilter(Node):
                       particle cloud around.  If this input is omitted, the odometry will be used """
         if xy_theta is None:  
             xy_theta = self.transform_helper.convert_pose_to_xy_and_theta(self.odom_pose)
-        self.particle_cloud = []
-        # TODO create particles
+        self.particle_cloud = [None]*self.n_particles
+        # TODO create particles - (done)
         #create 100 Particle instances with x, y, theta, w = 1.0
 
         #use numpy to create normalized distributions for x, y, theta
         #s = np.random.normal(mu, sigma, 1000)
-        theta = np.random.normal(0, 0.17,100)  #we think theta is in radians?
-        x = np.random.normal(0, 0.5,100) #change 0 to the current pose of the robot
-        y = np.random.normal(0, 0.5,100)   #here as well
+        x_robot = self.robot_pose.position.x
+        y_robot = self.robot_pose.position.y
+        #roll_x, pitch_y, yaw_z = euler_from_quaternion(self.robot_pose)
+        #theta_robot = yaw_z
+        yaw_z = 0
+        theta = np.random.normal(yaw_z, 0.17,self.n_particles)  #we think theta is in radians?
+        x = np.random.normal(x_robot, 0.5,self.n_particles) #change 0 to the current pose of the robot (done)
+        y = np.random.normal(y_robot, 0.5,self.n_particles)   #here as well
 
         #generate list of n_particles particles
         for i in range (self.n_particles):
@@ -278,10 +286,24 @@ class ParticleFilter(Node):
         self.normalize_particles()
         self.update_robot_pose()
 
-    def normalize_particles(self):
+    def normalize_partiscles(self):
         """ Make sure the particle weights define a valid distribution (i.e. sum to 1.0) """
-        # TODO: implement this
-        pass
+        # TODO: implement this (done)
+
+        particle_cloud_np = np.array(self.particle_cloud)
+        weights = []
+        for i in range (self.n_particles):
+            weights.append(particle_cloud_np[i].w)
+        
+        #take sum of all weights
+        total = sum(weights)  
+        #divide each weight by the total sum
+        division_array = [total]*self.n_particles #create an array for matrix division
+        normalized_weights = np.divide(weights,division_array) #normalize by performing matrice division
+
+        #reassign to each particle
+        for i in range (elf.n_particles):
+            self.particle_cloud[i].w = normalized_weights #assign normalize values back to particle_cloud
 
     def publish_particles(self, timestamp):
         msg = ParticleCloud()

@@ -10,14 +10,12 @@ from numpy import inf
 import pandas as pd
 import numpy as np
 from array import array
-import robotControl
-from nav_msgs.msg import Odometry
 
 class ParticleFilter(Node):
     def __init__(self):
-        super().__init__('particle_filter_node')
+        super().__init__('drive_square_node')
         self.create_timer(0.1, self.run_loop)
-        self.vel_pub = self.create_publisher(robotControl, "cmd_vel", 10)
+        # self.vel_pub = self.create_publisher(Twist, "cmd_vel", 10)
         self.odom_sub = self.create_subscription(Odometry, "odom", 10)
         # self.run_loop()
 

@@ -1,6 +1,6 @@
 from setuptools import find_packages, setup
 
-package_name = 'warmup_project'
+package_name = 'robot_localization'
 
 setup(
     name=package_name,
@@ -13,10 +13,9 @@ setup(
     ],
     install_requires=['setuptools'],
     zip_safe=True,
-    maintainer='cjhi',
-    maintainer_email='chilty@olin.edu',
-    description='Features for the CompRobo warmup project at Olin College,\
-                comprobo23.github.io/',
+    maintainer='laurent',
+    maintainer_email='laurent@todo.todo',
+    description='TODO: Package description',
     license='MIT',
     tests_require=['pytest'],
     entry_points={ #Has all the python files without the .py for colcon
@@ -26,6 +25,7 @@ setup(
             'occupancy_field = robot_localization.occupancy_field:main',
             'pf = robot_localization.pf:main',
             'robotControl = robot_localization.robotControl:main',
+            'particleFilter = robot_localization.particleFilter:main',
         ],
     },
 )
