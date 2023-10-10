@@ -20,6 +20,7 @@ from helper_functions import TFHelper
 from rclpy.qos import qos_profile_sensor_data
 from angle_helpers import quaternion_from_euler
 from angle_helpers import euler_from_quaternion
+from numpy import array
 
 #Class for defining particles with attributes x, y, theta, and their weighting w
 class Particle(object):
@@ -91,6 +92,7 @@ class ParticleFilter(Node):
 
         self.robot_pose = Pose()   #make sure this works/is needed?
 
+        #self.occ_f = OccupancyField(Node) # how to do this?
         # TODO: define additional constants if needed
 
         #What are these two?
@@ -200,12 +202,19 @@ class ParticleFilter(Node):
                 (1): compute the mean pose
                 (2): compute the most likely pose (i.e. the mode of the distribution)
         """
+        #would you not jsut take the particle(s) with the highest weighting?
+       
         # first make sure that the particle weights are normalized
         self.normalize_particles()
 
         # TODO: assign the latest pose into self.robot_pose as a geometry_msgs.Pose object
         # just to get started we will fix the robot's pose to always be at the origin
-        self.robot_pose = Pose()
+        self.robot_pose = Pose() #pose consists of a point position (x, y, z) and an orientation (quarternion)
+
+        #find the particle with the mode weighting and assign its position to the robot? I think
+
+
+
         if hasattr(self, 'odom_pose'):
             self.transform_helper.fix_map_to_odom_transform(self.robot_pose,
                                                             self.odom_pose)
@@ -233,6 +242,13 @@ class ParticleFilter(Node):
 
         # TODO: modify particles using delta
 
+        print("updating particles with odom")
+        #double check if this is correct
+        for i in range (self.n_particles):
+            self.particle_cloud[i].x = self.particle_cloud[i].x + delta[0]
+            self.particle_cloud[i].y = self.particle_cloud[i].x + delta[1]
+            self.particle_cloud[i].theta = self.particle_cloud[i].x + delta[2]
+
     def resample_particles(self):
         """ Resample the particles according to the new particle weights.
             The weights stored with each particle should define the probability that a particular
@@ -248,8 +264,19 @@ class ParticleFilter(Node):
             r: the distance readings to obstacles
             theta: the angle relative to the robot frame for each corresponding reading 
         """
-        # TODO: implement this
-        pass
+        # TODO: implement this - in progress, can't figure out how to use OccupancyField
+
+        #double check syntax
+        distances = [0.0]*self.n_particles
+        closest_laser_dist = min(r)
+
+        for i in range (self.n_particles):
+            dist = OccupancyField.get_closest_obstacle_distance(self, self.particle_cloud[i].x, self.particle_cloud[i].y) #having trouble using occupancy field - need to load map?
+            w = dist - closest_laser_dist
+            self.particle_cloud[i].w = w
+        
+        self.normalize_particles()
+        
 
     def update_initial_pose(self, msg):
         """ Callback function to handle re-initializing the particle filter based on a pose estimate.
@@ -283,27 +310,38 @@ class ParticleFilter(Node):
         for i in range (self.n_particles):
             self.particle_cloud[i]= Particle(x[i],y[i], theta[i], 1.0)
 
+        print("self.particle_cloud[2].w is", self.particle_cloud[2].w)
+
         self.normalize_particles()
         self.update_robot_pose()
 
-    def normalize_partiscles(self):
+    def normalize_particles(self):
         """ Make sure the particle weights define a valid distribution (i.e. sum to 1.0) """
-        # TODO: implement this (done)
+        # TODO: implement this (done) 
 
-        particle_cloud_np = np.array(self.particle_cloud)
-        weights = []
+        particle_cloud_np = self.particle_cloud
+        #print ("test,", self.particle_cloud[1].w)
+        weights = [0.0]*self.n_particles
         for i in range (self.n_particles):
-            weights.append(particle_cloud_np[i].w)
-        
+            #print("self.particle_cloud[1].w is", self.particle_cloud[1].w)
+            weights[i] = (self.particle_cloud[i].w)
+
         #take sum of all weights
-        total = sum(weights)  
+        total = sum(weights)
+        print("total is ", total)
+
         #divide each weight by the total sum
-        division_array = [total]*self.n_particles #create an array for matrix division
+        division_array =array([total]*self.n_particles) #create an array for matrix division
+        #print("division array, ", division_array)
+        #print("weights, ", weights)
         normalized_weights = np.divide(weights,division_array) #normalize by performing matrice division
+        #print("normalized weights, ", normalized_weights)
 
         #reassign to each particle
-        for i in range (elf.n_particles):
-            self.particle_cloud[i].w = normalized_weights #assign normalize values back to particle_cloud
+        for i in range (self.n_particles):
+            self.particle_cloud[i].w = normalized_weights[i] #assign normalize values back to particle_cloud
+        
+        #print("self.particle_cloud, ", self.particle_cloud)
 
     def publish_particles(self, timestamp):
         msg = ParticleCloud()
