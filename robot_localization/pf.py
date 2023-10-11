@@ -234,7 +234,6 @@ class ParticleFilter(Node):
         new_odom_xy_theta = self.transform_helper.convert_pose_to_xy_and_theta(self.odom_pose)
         # compute the change in x,y,theta since our last update
         if self.current_odom_xy_theta:
-            old_odom_xy_theta = self.current_odom_xy_theta
             delta = (new_odom_xy_theta[0] - self.current_odom_xy_theta[0],
                      new_odom_xy_theta[1] - self.current_odom_xy_theta[1],
                      new_odom_xy_theta[2] - self.current_odom_xy_theta[2])
@@ -244,14 +243,14 @@ class ParticleFilter(Node):
             self.current_odom_xy_theta = new_odom_xy_theta
             return
 
-        # TODO: modify particles using delta
-
         print("updating particles with odom")
-        #double check if this is correct
-        for i in range (self.n_particles):
-            self.particle_cloud[i].x = self.particle_cloud[i].x + delta[0]
-            self.particle_cloud[i].y = self.particle_cloud[i].x + delta[1]
-            self.particle_cloud[i].theta = self.particle_cloud[i].x + delta[2]
+        for i in range(self.n_particles):
+            self.particle_cloud[i].x += delta[0]
+            self.particle_cloud[i].y += delta[1]
+            # Ensure the theta remains in [-pi, pi]
+            self.particle_cloud[i].theta = (self.particle_cloud[i].theta + delta[2]) % (2 * np.pi)
+            if self.particle_cloud[i].theta > np.pi:
+                self.particle_cloud[i].theta -= 2 * np.pi
 
     def resample_particles(self):
         """ Resample the particles according to the new particle weights.
@@ -280,7 +279,6 @@ class ParticleFilter(Node):
             self.particle_cloud[i].w = w
         
         self.normalize_particles()
-        
 
     def update_initial_pose(self, msg):
         """ Callback function to handle re-initializing the particle filter based on a pose estimate.
