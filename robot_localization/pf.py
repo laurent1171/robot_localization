@@ -198,26 +198,30 @@ class ParticleFilter(Node):
     #function for estimating robot's pose and updating it
     def update_robot_pose(self):
         """ Update the estimate of the robot's pose given the updated particles.
-            There are two logical methods for this:
-                (1): compute the mean pose
-                (2): compute the most likely pose (i.e. the mode of the distribution)
+        This method computes the mean pose from the particles.
         """
-        #would you not jsut take the particle(s) with the highest weighting?
-       
-        # first make sure that the particle weights are normalized
+        # First, make sure the particle weights are normalized
         self.normalize_particles()
 
-        # TODO: assign the latest pose into self.robot_pose as a geometry_msgs.Pose object
-        # just to get started we will fix the robot's pose to always be at the origin
-        self.robot_pose = Pose() #pose consists of a point position (x, y, z) and an orientation (quarternion)
+        # Initialize variables for mean position and orientation
+        mean_x, mean_y, mean_theta = 0, 0, 0
 
-        #find the particle with the mode weighting and assign its position to the robot? I think
+        # Compute the weighted mean of the particles' states
+        for particle in self.particle_cloud:
+            mean_x += particle.x * particle.w
+            mean_y += particle.y * particle.w
+            mean_theta += particle.theta * particle.w
 
+        # Convert mean_theta (yaw) to a quaternion for the Pose message
+        orientation = quaternion_from_euler(0, 0, mean_theta)
 
+        # Construct the robot's pose using the calculated mean values
+        self.robot_pose = Pose(position=Point(x=mean_x, y=mean_y, z=0.0), 
+                            orientation=Quaternion(x=orientation[0], y=orientation[1], z=orientation[2], w=orientation[3]))
 
+        # Check for the odom_pose attribute and handle the transformation
         if hasattr(self, 'odom_pose'):
-            self.transform_helper.fix_map_to_odom_transform(self.robot_pose,
-                                                            self.odom_pose)
+            self.transform_helper.fix_map_to_odom_transform(self.robot_pose, self.odom_pose)
         else:
             self.get_logger().warn("Can't set map->odom transform since no odom data received")
 
