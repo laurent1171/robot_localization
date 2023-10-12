@@ -310,31 +310,27 @@ class ParticleFilter(Node):
 
     def initialize_particle_cloud(self, timestamp, xy_theta=None):
         """ Initialize the particle cloud.
-            Arguments
-            xy_theta: a triple consisting of the mean x, y, and theta (yaw) to initialize the
-                      particle cloud around.  If this input is omitted, the odometry will be used """
+            Arguments:
+                xy_theta: A tuple (x, y, theta) indicating the mean pose for initialization.
+                        If omitted, the current odometry is used.
+        """
+        # If no initial pose is provided, use the robot's odometry
         if xy_theta is None:  
             xy_theta = self.transform_helper.convert_pose_to_xy_and_theta(self.odom_pose)
+        
+        x_mean, y_mean, theta_mean = xy_theta
         self.particle_cloud = [None]*self.n_particles
-        # TODO create particles - (done)
-        #create 100 Particle instances with x, y, theta, w = 1.0
 
-        #use numpy to create normalized distributions for x, y, theta
-        #s = np.random.normal(mu, sigma, 1000)
-        x_robot = self.robot_pose.position.x
-        y_robot = self.robot_pose.position.y
-        #roll_x, pitch_y, yaw_z = euler_from_quaternion(self.robot_pose)
-        #theta_robot = yaw_z
-        yaw_z = 0
-        theta = np.random.normal(yaw_z, 0.17,self.n_particles)  #we think theta is in radians?
-        x = np.random.normal(x_robot, 0.5,self.n_particles) #change 0 to the current pose of the robot (done)
-        y = np.random.normal(y_robot, 0.5,self.n_particles)   #here as well
+        # Generate particles based on Gaussian distributions centered on the provided pose
+        x_vals = np.random.normal(x_mean, 0.5, self.n_particles)
+        y_vals = np.random.normal(y_mean, 0.5, self.n_particles)
+        theta_vals = np.random.normal(theta_mean, 0.17, self.n_particles)
 
-        #generate list of n_particles particles
+        # Populate the particle cloud
         for i in range (self.n_particles):
-            self.particle_cloud[i]= Particle(x[i],y[i], theta[i], 1.0)
+            self.particle_cloud[i]= Particle(x_vals[i], y_vals[i], theta_vals[i], 1.0)
 
-        print("self.particle_cloud[2].w is", self.particle_cloud[2].w)
+        #print("self.particle_cloud[2].w is", self.particle_cloud[2].w)
 
         self.normalize_particles()
         self.update_robot_pose()
