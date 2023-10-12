@@ -68,6 +68,7 @@ class ParticleFilter(Node):
             n_particles: the number of particles in the filter
             d_thresh: the amount of linear movement before triggering a filter update
             a_thresh: the amount of angular movement before triggering a filter update
+            laser_std: the standard deviation for the laser measurments
             pose_listener: a subscriber that listens for new approximate pose estimates (i.e. generated through the rviz GUI)
             particle_pub: a publisher for the particle cloud
             last_scan_timestamp: this is used to keep track of the clock when using bags
