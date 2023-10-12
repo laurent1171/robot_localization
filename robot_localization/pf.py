@@ -96,6 +96,8 @@ class ParticleFilter(Node):
         #self.occ_f = OccupancyField(Node) # how to do this?
         # TODO: define additional constants if needed
 
+        self.laser_std = 0.1 # Standard deviation for the laser measurements
+        
         #What are these two?
         # pose_listener responds to selection of a new approximate robot location (for instance using rviz)
         self.create_subscription(PoseWithCovarianceStamped, 'initialpose', self.update_initial_pose, 10)
@@ -284,8 +286,6 @@ class ParticleFilter(Node):
             r: the distance readings to obstacles
             theta: the angle relative to the robot frame for each corresponding reading 
         """
-        sigma = 0.2  # A starting value. This represents uncertainty in measurements.
-
         # Iterate over each particle
         for particle in self.particle_cloud:
             
@@ -297,7 +297,7 @@ class ParticleFilter(Node):
             
             # The weight can be updated based on how close the laser reading is to the expected reading.
             # Here we use a Gaussian distribution.
-            particle.w = math.exp(-0.5 * (expected_distance - min(r))**2 / sigma**2)
+            particle.w = math.exp(-0.5 * (expected_distance - min(r))**2 / self.laser_std**2)
 
         # Normalize the weights so they sum to 1
         self.normalize_particles()
