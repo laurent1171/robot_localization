@@ -337,31 +337,12 @@ class ParticleFilter(Node):
 
     def normalize_particles(self):
         """ Make sure the particle weights define a valid distribution (i.e. sum to 1.0) """
-        # TODO: implement this (done) 
-
-        particle_cloud_np = self.particle_cloud
-        #print ("test,", self.particle_cloud[1].w)
-        weights = [0.0]*self.n_particles
-        for i in range (self.n_particles):
-            #print("self.particle_cloud[1].w is", self.particle_cloud[1].w)
-            weights[i] = (self.particle_cloud[i].w)
-
-        #take sum of all weights
-        total = sum(weights)
-        print("total is ", total)
-
-        #divide each weight by the total sum
-        division_array =array([total]*self.n_particles) #create an array for matrix division
-        #print("division array, ", division_array)
-        #print("weights, ", weights)
-        normalized_weights = np.divide(weights,division_array) #normalize by performing matrice division
-        #print("normalized weights, ", normalized_weights)
-
-        #reassign to each particle
-        for i in range (self.n_particles):
-            self.particle_cloud[i].w = normalized_weights[i] #assign normalize values back to particle_cloud
+        # Calculate total weight of all particles
+        total_weight = sum([particle.w for particle in self.particle_cloud])
         
-        #print("self.particle_cloud, ", self.particle_cloud)
+        # Normalize each particle's weight
+        for particle in self.particle_cloud:
+            particle.w /= total_weight
 
     def publish_particles(self, timestamp):
         msg = ParticleCloud()
