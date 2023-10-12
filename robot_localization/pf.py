@@ -232,23 +232,28 @@ class ParticleFilter(Node):
             that indicates the change in position and angle between the odometry
             when the particles were last updated and the current odometry.
         """
+        # Convert the current odometry pose to x, y, and theta coordinates
         new_odom_xy_theta = self.transform_helper.convert_pose_to_xy_and_theta(self.odom_pose)
-        # compute the change in x,y,theta since our last update
+
+        # If we have a previous odometry measurement
         if self.current_odom_xy_theta:
+            # Calculate the change (delta) in x, y, and theta since the last update
             delta = (new_odom_xy_theta[0] - self.current_odom_xy_theta[0],
                      new_odom_xy_theta[1] - self.current_odom_xy_theta[1],
                      new_odom_xy_theta[2] - self.current_odom_xy_theta[2])
 
+            # Update the current odometry position and angle to the new values
             self.current_odom_xy_theta = new_odom_xy_theta
         else:
+            # If we don't have a previous measurement, set the current one and exit
             self.current_odom_xy_theta = new_odom_xy_theta
             return
-
-        print("updating particles with odom")
+        # Update each particle's position and orientation based on the computed delta
         for i in range(self.n_particles):
             self.particle_cloud[i].x += delta[0]
             self.particle_cloud[i].y += delta[1]
-            # Ensure the theta remains in [-pi, pi]
+            # Adjust the particle's orientation by the change in theta
+            # And make sure the orientation remains within the range [-pi, pi]
             self.particle_cloud[i].theta = (self.particle_cloud[i].theta + delta[2]) % (2 * np.pi)
             if self.particle_cloud[i].theta > np.pi:
                 self.particle_cloud[i].theta -= 2 * np.pi
@@ -279,17 +284,22 @@ class ParticleFilter(Node):
             r: the distance readings to obstacles
             theta: the angle relative to the robot frame for each corresponding reading 
         """
-        # TODO: implement this - in progress, can't figure out how to use OccupancyField
+        sigma = 0.2  # A starting value. This represents uncertainty in measurements.
 
-        #double check syntax
-        distances = [0.0]*self.n_particles
-        closest_laser_dist = min(r)
+        # Iterate over each particle
+        for particle in self.particle_cloud:
+            
+            # Consider the distance to the closest obstacle 
+            # from the particle and compare it with the minimum distance in the laser readings.
+            # Ideally, we'd consider all angles and compare readings.
+            
+            expected_distance = self.occupancy_field.get_closest_obstacle_distance(particle.x, particle.y)
+            
+            # The weight can be updated based on how close the laser reading is to the expected reading.
+            # Here we use a Gaussian distribution.
+            particle.w = math.exp(-0.5 * (expected_distance - min(r))**2 / sigma**2)
 
-        for i in range (self.n_particles):
-            dist = OccupancyField.get_closest_obstacle_distance(self, self.particle_cloud[i].x, self.particle_cloud[i].y) #having trouble using occupancy field - need to load map?
-            w = dist - closest_laser_dist
-            self.particle_cloud[i].w = w
-        
+        # Normalize the weights so they sum to 1
         self.normalize_particles()
 
     def update_initial_pose(self, msg):
