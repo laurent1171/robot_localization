@@ -21,6 +21,7 @@ from rclpy.qos import qos_profile_sensor_data
 from angle_helpers import quaternion_from_euler
 from angle_helpers import euler_from_quaternion
 from numpy import array
+import copy
 
 #Class for defining particles with attributes x, y, theta, and their weighting w
 class Particle(object):
@@ -260,7 +261,18 @@ class ParticleFilter(Node):
         """
         # make sure the distribution is normalized
         self.normalize_particles()
-        # TODO: fill out the rest of the implementation
+        
+        # Extract the weights from the particle cloud
+        weights = [particle.w for particle in self.particle_cloud]
+        
+        # Resample particles based on their weights
+        # Using numpy's random.choice for this purpose
+        indices = np.random.choice(len(self.particle_cloud), self.n_particles, p=weights)
+
+        # Create a new particle cloud based on the sampled indices
+        resampled_particles = [copy.deepcopy(self.particle_cloud[i]) for i in indices]
+
+        self.particle_cloud = resampled_particles
 
     def update_particles_with_laser(self, r, theta):
         """ Updates the particle weights in response to the scan data
